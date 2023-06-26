@@ -6,7 +6,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -17,15 +17,15 @@ class MyApp extends StatelessWidget {
 }
 
 class WifiToggleScreen extends StatefulWidget {
-  const WifiToggleScreen({super.key});
+  const WifiToggleScreen({Key? key}) : super(key: key);
 
   @override
-  // ignore: library_private_types_in_public_api
   _WifiToggleScreenState createState() => _WifiToggleScreenState();
 }
 
 class _WifiToggleScreenState extends State<WifiToggleScreen> {
   bool _wifiEnabled = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -33,26 +33,35 @@ class _WifiToggleScreenState extends State<WifiToggleScreen> {
     _checkWifiStatus();
   }
 
-  void _checkWifiStatus() async {
+  Future<void> _checkWifiStatus() async {
     bool wifiEnabled = await WiFiForIoTPlugin.isEnabled();
     setState(() {
       _wifiEnabled = wifiEnabled;
     });
   }
 
-  void _toggleWifi() async {
+  Future<void> _toggleWifi() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     if (_wifiEnabled) {
-      await WiFiForIoTPlugin.setEnabled(false);
+      await WiFiForIoTPlugin.setEnabled(false, shouldOpenSettings: false);
+      // Aguarda alguns segundos para verificar novamente o status do Wi-Fi
+      await Future.delayed(const Duration(seconds: 2));
     } else {
       await WiFiForIoTPlugin.setEnabled(true);
     }
-    _checkWifiStatus();
+    await _checkWifiStatus();
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Stack(
         alignment: Alignment.center,
         children: [
@@ -60,10 +69,10 @@ class _WifiToggleScreenState extends State<WifiToggleScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Padding(
-                  padding: EdgeInsets.only(top: 50),
+                const Padding(
+                  padding: EdgeInsets.only(top: 100),
                   child: Text(
-                    'Clique no ícone para ativar ou desativar o Wifi',
+                    'Clique no ícone para ativar ou desativar o Wi-Fi',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -85,18 +94,22 @@ class _WifiToggleScreenState extends State<WifiToggleScreen> {
             bottom: 300,
             child: ClipOval(
               child: Material(
-                color: Color.fromRGBO(19, 58, 104, 0),
+                color: const Color.fromRGBO(19, 58, 104, 0),
                 child: InkWell(
-                  onTap: _toggleWifi,
-                  child: SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Icon(
-                      _wifiEnabled ? Icons.wifi : Icons.wifi_off,
-                      size: 200,
-                      color: Color.fromRGBO(29, 17, 99, 1),
-                    ),
-                  ),
+                  onTap: _isLoading ? null : _toggleWifi,
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(),
+                        )
+                      : SizedBox(
+                          width: 200,
+                          height: 200,
+                          child: Icon(
+                            _wifiEnabled ? Icons.wifi : Icons.wifi_off,
+                            size: 200,
+                            color: const Color.fromRGBO(29, 17, 99, 1),
+                          ),
+                        ),
                 ),
               ),
             ),
